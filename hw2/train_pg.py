@@ -327,8 +327,9 @@ def train_PG(exp_name='',
             discounted = path['reward'] * np.logspace(0, num_steps-1, num_steps, base=gamma)
             q = [np.sum(discounted[i:]) for i in range(len(discounted))]
             path['q'] = q
+        real_q_n = np.concatenate([path['q'] for path in paths])
         if reward_to_go:
-            q_n = np.concatenate([path['q'] for path in paths])
+            q_n = real_q_n
         else:
             q_n = np.concatenate([path['q'][0] * len(path['q']) for path in paths])
 
@@ -346,7 +347,11 @@ def train_PG(exp_name='',
             # (mean and std) of the current or previous batch of Q-values. (Goes with Hint
             # #bl2 below.)
 
-            b_n = TODO
+            baseline_pred_val = sess.run(baseline_prediction, feed_dict={sy_ob_no:ob_no})
+            mean_q = np.mean(real_q_n)
+            std_q = np.std(real_q_n)
+
+            b_n = baseline_pred_val * std_q + mean_q
             adv_n = q_n - b_n
         else:
             adv_n = q_n.copy()
@@ -360,7 +365,9 @@ def train_PG(exp_name='',
             # On the next line, implement a trick which is known empirically to reduce variance
             # in policy gradient methods: normalize adv_n to have mean zero and std=1. 
             # YOUR_CODE_HERE
-            pass
+            mean_adv_n = np.mean(adv_n)
+            std_adv_n = np.std(adv_n)
+            adv_n = (adv_n - mean_adv_n) / std_adv_n
 
 
         #====================================================================================#
@@ -379,7 +386,8 @@ def train_PG(exp_name='',
             # targets to have mean zero and std=1. (Goes with Hint #bl1 above.)
 
             # YOUR_CODE_HERE
-            pass
+            targets = (real_q_n - np.mean(real_q_n))/np.std(real_q_n)
+            sess.run(baseline_update_op, feed_dict={sy_ob_no: ob_no, baseline_targets: targets})
 
         #====================================================================================#
         #                           ----------SECTION 4----------
@@ -393,6 +401,7 @@ def train_PG(exp_name='',
         # and after an update, and then log them below. 
 
         # YOUR_CODE_HERE
+        sess.run(update_op, feed_dict={sy_ob_no: ob_no, sy_adv_n: adv_n})
 
 
         # Log diagnostics
