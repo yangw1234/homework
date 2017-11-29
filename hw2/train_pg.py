@@ -34,8 +34,11 @@ def build_mlp(
     #========================================================================================#
 
     with tf.variable_scope(scope):
-        # YOUR_CODE_HERE
-        pass
+        h = input_placeholder
+        for i in range(n_layers):
+            h = tf.layers.dense(h, size, activation=activation)
+        output = tf.layers.dense(h, output_size, activation=output_activation)
+    return output
 
 def pathlength(path):
     return len(path["reward"])
@@ -123,7 +126,7 @@ def train_PG(exp_name='',
         sy_ac_na = tf.placeholder(shape=[None, ac_dim], name="ac", dtype=tf.float32) 
 
     # Define a placeholder for advantages
-    sy_adv_n = TODO
+    sy_adv_n = tf.placeholder(shape=[None,], name="adv", dtype=tf.float32)
 
 
     #========================================================================================#
@@ -167,16 +170,16 @@ def train_PG(exp_name='',
 
     if discrete:
         # YOUR_CODE_HERE
-        sy_logits_na = TODO
-        sy_sampled_ac = TODO # Hint: Use the tf.multinomial op
-        sy_logprob_n = TODO
+        sy_logits_na = build_mlp(sy_ob_no, size=size, output_size=ac_dim, scope="mlp", n_layers=n_layers)
+        sy_sampled_ac = tf.squeeze(tf.multinomial(sy_logits_na, 1)) # Hint: Use the tf.multinomial op
+        sy_logprob_n = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=sy_ac_na, logits=sy_logits_na)
 
     else:
         # YOUR_CODE_HERE
-        sy_mean = TODO
-        sy_logstd = TODO # logstd should just be a trainable variable, not a network output.
-        sy_sampled_ac = TODO
-        sy_logprob_n = TODO  # Hint: Use the log probability under a multivariate gaussian. 
+        sy_mean = build_mlp(sy_ob_no, size=size, output_size=ac_dim, scope="mlp", n_layers=n_layers)
+        sy_logstd = tf.Variable(tf.constant(1.0, shape=[ac_dim])) # logstd should just be a trainable variable, not a network output.
+        sy_sampled_ac = sy_mean + tf.exp(sy_logstd) * tf.random_normal([None, ac_dim])
+        sy_logprob_n = tf.reduce_sum(tf.square(sy_ac_na - sy_mean), axis=1) * sy_logstd
 
 
 
@@ -185,7 +188,7 @@ def train_PG(exp_name='',
     # Loss Function and Training Operation
     #========================================================================================#
 
-    loss = TODO # Loss function that we'll differentiate to get the policy gradient.
+    loss = tf.reduce_mean(sy_logprob_n * sy_adv_n) # Loss function that we'll differentiate to get the policy gradient.
     update_op = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
 
