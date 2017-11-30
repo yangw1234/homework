@@ -247,7 +247,7 @@ def train_PG(exp_name='',
                     time.sleep(0.05)
                 obs.append(ob)
                 ac = sess.run(sy_sampled_ac, feed_dict={sy_ob_no : ob[None]})
-                ac = ac[0]
+                #ac = ac[0]
                 acs.append(ac)
                 ob, rew, done, _ = env.step(ac)
                 rewards.append(rew)
@@ -331,7 +331,7 @@ def train_PG(exp_name='',
         if reward_to_go:
             q_n = real_q_n
         else:
-            q_n = np.concatenate([path['q'][0] * len(path['q']) for path in paths])
+            q_n = np.concatenate([path['q'][0:1] * len(path['q']) for path in paths])
 
         #====================================================================================#
         #                           ----------SECTION 5----------
@@ -401,7 +401,7 @@ def train_PG(exp_name='',
         # and after an update, and then log them below. 
 
         # YOUR_CODE_HERE
-        sess.run(update_op, feed_dict={sy_ob_no: ob_no, sy_adv_n: adv_n})
+        sess.run(update_op, feed_dict={sy_ob_no: ob_no, sy_adv_n: adv_n, sy_ac_na: ac_na})
 
 
         # Log diagnostics
