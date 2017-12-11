@@ -288,7 +288,7 @@ def learn(env,
             total_error_value, _ = session.run([total_error, train_fn], feed_dict={
                 obs_t_ph: obs_t_batch,
                 act_t_ph: act_t_batch,
-                rew_t_ph: act_t_batch,
+                rew_t_ph: rew_t_batch,
                 obs_tp1_ph: obs_tp1_batch,
                 done_mask_ph: done_mask_batch,
                 learning_rate: optimizer_spec.lr_schedule.value(t)
