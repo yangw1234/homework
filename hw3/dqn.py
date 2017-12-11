@@ -128,15 +128,16 @@ def learn(env,
     ######
     
     # YOUR CODE HERE
-    action_value_t = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
-    greedy_action = tf.argmax(action_value_t, axis=1)
+    q_t = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
+    greedy_action = tf.argmax(q_t, axis=1)
 
-    action_value_t1 = q_func(obs_tp1_float, num_actions, scope="target_q_func", reuse=False)
-    target = rew_t_ph + (1.0 - done_mask_ph) * gamma * tf.reduce_max(action_value_t1, axis=1)
+    q_tp1 = q_func(obs_tp1_float, num_actions, scope="target_q_func", reuse=False)
+    target = rew_t_ph + (1.0 - done_mask_ph) * gamma * tf.reduce_max(q_tp1, axis=1)
 
-    q_t_act = tf.reduce_sum(action_value_t * tf.one_hot(act_t_ph, num_actions), axis=1)
+    q_t_act = tf.reduce_sum(q_t * tf.one_hot(act_t_ph, num_actions), axis=1)
 
-    total_error = tf.reduce_sum(tf.nn.l2_loss(q_t_act - target))
+    total_error = tf.losses.mean_squared_error(target, q_t_act)
+    # total_error = tf.reduce_mean(tf.losses.huber_loss(target, q_t_act))
 
     q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func')
     target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_q_func')
@@ -209,8 +210,8 @@ def learn(env,
 
         ret = replay_buffer.store_frame(last_obs)
 
-        if (not model_initialized) or exploration.value(t) > np.random.rand():
-            action = np.random.random_integers(1, num_actions) - 1
+        if (not model_initialized) or exploration.value(t) > random.random():
+            action = random.randint(0, num_actions - 1)
         else:
             obs_t = replay_buffer.encode_recent_observation()
             action = session.run(greedy_action, feed_dict={obs_t_ph: np.expand_dims(obs_t, axis=0)})
@@ -223,7 +224,7 @@ def learn(env,
         last_obs = obs
 
         if done:
-            env.reset()
+            last_obs = env.reset()
 
         #####
 
@@ -281,10 +282,8 @@ def learn(env,
                     obs_t_ph: obs_t_batch,
                     obs_tp1_ph: obs_t_batch
                 })
-                model_initialized = True
-
-            if num_param_updates % target_update_freq == 0:
                 session.run(update_target_fn)
+                model_initialized = True
 
             total_error_value, _ = session.run([total_error, train_fn], feed_dict={
                 obs_t_ph: obs_t_batch,
@@ -296,6 +295,9 @@ def learn(env,
             })
 
             num_param_updates += 1
+            if num_param_updates % target_update_freq == 0:
+                print("update target network")
+                session.run(update_target_fn)
             #####
 
         ### 4. Log progress
