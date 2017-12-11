@@ -214,8 +214,9 @@ def learn(env,
         else:
             obs_t = replay_buffer.encode_recent_observation()
             action = session.run(greedy_action, feed_dict={obs_t_ph: np.expand_dims(obs_t, axis=0)})
+            action = action[0]
 
-        obs, reward, done, _ = env.step(action[0])
+        obs, reward, done, _ = env.step(action)
 
         replay_buffer.store_effect(ret, action, reward, done)
 
@@ -274,9 +275,6 @@ def learn(env,
             
             # YOUR CODE HERE
 
-            if num_param_updates % target_update_freq == 0:
-                session.run(update_target_fn)
-
             obs_t_batch, act_t_batch, rew_t_batch, obs_tp1_batch, done_mask_batch = replay_buffer.sample(batch_size)
             if not model_initialized:
                 initialize_interdependent_variables(session, tf.global_variables(), {
@@ -284,6 +282,10 @@ def learn(env,
                     obs_tp1_ph: obs_t_batch
                 })
                 model_initialized = True
+
+            if num_param_updates % target_update_freq == 0:
+                session.run(update_target_fn)
+
             total_error_value, _ = session.run([total_error, train_fn], feed_dict={
                 obs_t_ph: obs_t_batch,
                 act_t_ph: act_t_batch,
