@@ -136,8 +136,8 @@ def learn(env,
 
     q_t_act = tf.reduce_sum(q_t * tf.one_hot(act_t_ph, num_actions), axis=1)
 
-    total_error = tf.losses.mean_squared_error(target, q_t_act)
-    # total_error = tf.reduce_mean(tf.losses.huber_loss(target, q_t_act))
+    # total_error = tf.losses.mean_squared_error(target, q_t_act)
+    total_error = tf.reduce_mean(tf.losses.huber_loss(target, q_t_act))
 
     q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func')
     target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_q_func')
